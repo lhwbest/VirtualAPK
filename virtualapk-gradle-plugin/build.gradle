@@ -1,5 +1,6 @@
 buildscript {
     repositories {
+        maven{ url 'http://maven.aliyun.com/nexus/content/groups/public/'}
         mavenLocal()
         google()
         mavenCentral()
@@ -20,6 +21,7 @@ tasks.withType(GroovyCompile) {
 }
 
 repositories {
+    maven{ url 'http://maven.aliyun.com/nexus/content/groups/public/'}
     mavenLocal()
     google()
     mavenCentral()
