@@ -2,6 +2,7 @@ buildscript {
     System.properties['com.android.build.gradle.overrideVersionCheck'] = 'true'
 
     repositories {
+        maven{ url 'http://maven.aliyun.com/nexus/content/groups/public/'}
         jcenter()
         google()
     }
@@ -26,6 +27,7 @@ ext {
 
 allprojects {
     repositories {
+        maven{ url 'http://maven.aliyun.com/nexus/content/groups/public/'}
         mavenCentral()
         jcenter()
         google()
