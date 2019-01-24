@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.didi.virtualapk.demo"
     android:versionCode="1"
-    android:versionName="1.0" >
+    android:versionName="1.0">
 
     <uses-sdk
         android:minSdkVersion="15"
@@ -17,7 +17,6 @@
 
     <uses-permission android:name="com.didi.virtualapk.demo.PROVIDER" />
     <uses-permission android:name="com.didi.virtualapk.demo.permission.ACCESS_BOOK_SERVICE" />
-
     <uses-permission android:name="android.permission.SET_WALLPAPER_HINTS" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <uses-permission android:name="android.permission.BATTERY_STATS" />
@@ -46,33 +45,34 @@
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
 
     <application
-        android:name="com.didi.virtualapk.demo.MyApplication"
+        android:name=".MyApplication"
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme" >
+        android:theme="@style/AppTheme">
         <activity
-            android:name="com.didi.virtualapk.demo.MainActivity"
+            android:name=".MainActivity"
             android:configChanges="orientation|screenSize"
             android:label="A"
-            android:launchMode="standard" >
+            android:launchMode="standard">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category._LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
-            android:name="com.didi.virtualapk.demo.SecondActivity"
+            android:name=".SecondActivity"
             android:configChanges="screenLayout"
-            android:launchMode="singleInstance"
-            android:label="B" />
+            android:label="B"
+            android:launchMode="singleInstance" />
         <activity
-            android:name="com.didi.virtualapk.demo.ThirdActivity"
+            android:name=".ThirdActivity"
             android:configChanges="screenLayout"
             android:label="C" />
         <activity
-            android:name="com.didi.virtualapk.demo.aidl.BookManagerActivity"
-            android:label="@string/title_activity_book_manager" >
+            android:name=".aidl.BookManagerActivity"
+            android:label="@string/title_activity_book_manager">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -80,28 +80,27 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.didi.virtualapk.demo.messenger.MessengerActivity"
-            android:label="@string/title_activity_messenger" >
+            android:name=".messenger.MessengerActivity"
+            android:label="@string/title_activity_messenger">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
 
         <service
-            android:name="com.didi.virtualapk.demo.messenger.MessengerService"
-            android:process=":remote" >
+            android:name=".messenger.MessengerService"
+            android:process=":remote">
             <intent-filter>
                 <action android:name="com.didi.MessengerService.launch" />
             </intent-filter>
         </service>
         <service
-            android:name="com.didi.virtualapk.demo.aidl.BookManagerService"
-            android:process=":remote" >
-        </service>
+            android:name=".aidl.BookManagerService"
+            android:process=":remote"></service>
 
         <activity
-            android:name="com.didi.virtualapk.demo.provider.ProviderActivity"
-            android:label="@string/title_activity_provider" >
+            android:name=".provider.ProviderActivity"
+            android:label="@string/title_activity_provider">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -110,20 +109,19 @@
         </activity>
 
         <provider
-            android:name="com.didi.virtualapk.demo.provider.BookProvider"
+            android:name=".provider.BookProvider"
             android:authorities="com.didi.virtualapk.demo.book.provider"
             android:permission="com.didi.virtualapk.demo.PROVIDER"
-            android:process=":provider" >
-        </provider>
+            android:process=":provider"></provider>
 
         <service
-            android:name="com.didi.virtualapk.demo.socket.TCPServerService"
+            android:name=".socket.TCPServerService"
             android:process=":remote" />
 
         <activity
-            android:name="com.didi.virtualapk.demo.socket.TCPClientActivity"
+            android:name=".socket.TCPClientActivity"
             android:label="@string/title_activity_tcpclient"
-            android:windowSoftInputMode="adjustResize" >
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -132,18 +130,27 @@
         </activity>
 
         <service
-            android:name="com.didi.virtualapk.demo.binderpool.BinderPoolService"
+            android:name=".binderpool.BinderPoolService"
             android:process=":remote" />
 
         <activity
-            android:name="com.didi.virtualapk.demo.binderpool.BinderPoolActivity"
-            android:label="@string/title_activity_binder_pool" >
+            android:name=".binderpool.BinderPoolActivity"
+            android:label="@string/title_activity_binder_pool">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category._LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".receivers.MyBroadCastReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.lhwbest.demo.receiver.MyCustomReceiver"/>
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

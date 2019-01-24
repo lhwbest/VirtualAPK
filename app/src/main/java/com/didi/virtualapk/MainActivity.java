@@ -169,4 +169,10 @@ public class MainActivity extends AppCompatActivity {
         builder.setNegativeButton("好的", null);
         builder.show();
     }
+
+    public void sendBroadCast(View view) {
+        Intent intent = new Intent();
+        intent.setAction("com.lhwbest.demo.receiver.MyCustomReceiver");
+        sendBroadcast(intent);
+    }
 }

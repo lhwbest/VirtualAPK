@@ -133,7 +133,7 @@ public class LoadedPlugin {
     protected final PackageParser.Package mPackage;
     protected final PackageInfo mPackageInfo;
     protected Resources mResources;
-    protected ClassLoader mClassLoader;
+    protected ClassLoader mClassLoader;//DexClassLoader，dexPath指定的是插件apk的路径
     protected PluginPackageManager mPackageManager;
 
     protected Map<ComponentName, ActivityInfo> mActivityInfos;
@@ -223,9 +223,13 @@ public class LoadedPlugin {
         Map<ComponentName, ActivityInfo> receivers = new HashMap<ComponentName, ActivityInfo>();
         for (PackageParser.Activity receiver : this.mPackage.receivers) {
             receivers.put(receiver.getComponentName(), receiver.info);
-    
+
+            //通过反射创建BroadcastReceiver实例，动态注册该广播
+            //getClassLoader返回的是一个自定义的DexClassLoader，dexPath指向插件apk的路径
             BroadcastReceiver br = BroadcastReceiver.class.cast(getClassLoader().loadClass(receiver.getComponentName().getClassName()).newInstance());
             for (PackageParser.ActivityIntentInfo aii : receiver.intents) {
+                //mHostContext是宿主应用的Context
+                //将插件中静态注册的广播，动态注册到宿主应用中。
                 this.mHostContext.registerReceiver(br, aii);
             }
         }
@@ -284,6 +288,10 @@ public class LoadedPlugin {
         return mApplication;
     }
 
+    /**
+     *
+     * @throws Exception
+     */
     public void invokeApplication() throws Exception {
         final Exception[] temp = new Exception[1];
         // make sure application's callback is run on ui thread.
@@ -383,16 +391,25 @@ public class LoadedPlugin {
         Reflector.QuietReflector.with(this.mResources).field("mThemeResId").set(resid);
     }
 
+    /**
+     * 构造插件的Application
+     * @param forceDefaultAppClass 是否强制使用系统默认的Application.java构造实例
+     * @param instrumentation      宿主应用的instrumenttaion，也就是说插件使用宿主的Instrumenttaion
+     * @return
+     * @throws Exception
+     */
     protected Application makeApplication(boolean forceDefaultAppClass, Instrumentation instrumentation) throws Exception {
         if (null != this.mApplication) {
             return this.mApplication;
         }
 
+        //获取插件的Application Class
         String appClass = this.mPackage.applicationInfo.className;
         if (forceDefaultAppClass || null == appClass) {
             appClass = "android.app.Application";
         }
-    
+
+        //构造Application实例
         this.mApplication = instrumentation.newApplication(this.mClassLoader, appClass, this.getPluginContext());
         // inject activityLifecycleCallbacks of the host application
         mApplication.registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacksProxy());
