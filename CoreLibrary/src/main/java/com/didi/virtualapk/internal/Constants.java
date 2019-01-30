@@ -27,6 +27,7 @@ public class Constants {
     public static final String OPTIMIZE_DIR = "dex";
     public static final String NATIVE_DIR = "valibs";
 
+    //将插件的资源全部添加到宿主的 Resources
     public static final boolean COMBINE_RESOURCES = true;
     //宿主和插件有同一个类(包名、类名相同)， 如果COMBINE_CLASSLOADER为true则插件会加载宿主中的类
     public static final boolean COMBINE_CLASSLOADER = true;

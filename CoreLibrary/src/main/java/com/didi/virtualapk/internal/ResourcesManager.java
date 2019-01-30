@@ -57,30 +57,46 @@ class ResourcesManager {
         }
         
         Resources resources = ResourcesManager.createResourcesSimple(hostContext, apk.getAbsolutePath());
+        //替换宿主的resource
         ResourcesManager.hookResources(hostContext, resources);
         return resources;
     }
-    
+
+    /**
+     *
+     * @param hostContext 宿主的context
+     * @param apk         插件apk地址
+     * @return
+     * @throws Exception
+     */
     private static Resources createResourcesSimple(Context hostContext, String apk) throws Exception {
         Resources hostResources = hostContext.getResources();
         Resources newResources = null;
         AssetManager assetManager;
         Reflector reflector = Reflector.on(AssetManager.class).method("addAssetPath", String.class);
+
+        //创建assetManager实例
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             assetManager = AssetManager.class.newInstance();
             reflector.bind(assetManager);
-            final int cookie1 = reflector.call(hostContext.getApplicationInfo().sourceDir);;
+            //sourceDir宿主的APK包在手机中的路径，宿主的资源通过此地址加载
+            final int cookie1 = reflector.call(hostContext.getApplicationInfo().sourceDir);
             if (cookie1 == 0) {
                 throw new RuntimeException("createResources failed, can't addAssetPath for " + hostContext.getApplicationInfo().sourceDir);
             }
         } else {
+            //获取宿主的assetsManager
             assetManager = hostResources.getAssets();
             reflector.bind(assetManager);
         }
+
+        //将 apk 路径加到assetManager中
         final int cookie2 = reflector.call(apk);
         if (cookie2 == 0) {
             throw new RuntimeException("createResources failed, can't addAssetPath for " + apk);
         }
+
+        //获取所有已加载插件，并将apk路径添加到宿主assetManager中
         List<LoadedPlugin> pluginList = PluginManager.getInstance(hostContext).getAllLoadedPlugins();
         for (LoadedPlugin plugin : pluginList) {
             final int cookie3 = reflector.call(plugin.getLocation());
@@ -88,6 +104,8 @@ class ResourcesManager {
                 throw new RuntimeException("createResources failed, can't addAssetPath for " + plugin.getLocation());
             }
         }
+
+        //适配不同厂商
         if (isMiUi(hostResources)) {
             newResources = MiUiResourcesCompat.createResources(hostResources, assetManager);
         } else if (isVivo(hostResources)) {
@@ -101,6 +119,7 @@ class ResourcesManager {
             newResources = new Resources(assetManager, hostResources.getDisplayMetrics(), hostResources.getConfiguration());
         }
         // lastly, sync all LoadedPlugin to newResources
+        //更新插件resource，这个resource包含宿主以及所有插件的资源
         for (LoadedPlugin plugin : pluginList) {
             plugin.updateResources(newResources);
         }

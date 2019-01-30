@@ -103,8 +103,10 @@ public class LoadedPlugin {
 
     protected Resources createResources(Context context, String packageName, File apk) throws Exception {
         if (Constants.COMBINE_RESOURCES) {
+            //将所有插件中的资源合并到宿主中，插件就可以访问宿主的资源。
             return ResourcesManager.createResources(context, packageName, apk);
         } else {
+            //插件只能访问自己的资源，无法访问宿主以及其它插件的资源。
             Resources hostResources = context.getResources();
             AssetManager assetManager = createAssetManager(context, apk);
             return new Resources(assetManager, hostResources.getDisplayMetrics(), hostResources.getConfiguration());
@@ -129,6 +131,7 @@ public class LoadedPlugin {
 
     protected final String mLocation;
     protected PluginManager mPluginManager;
+    //宿主context
     protected Context mHostContext;
     protected Context mPluginContext;
     protected final File mNativeLibDir;
@@ -266,6 +269,12 @@ public class LoadedPlugin {
         return this.mResources;
     }
 
+    /**
+     * 更新插件resource
+     * 目前通过梳理代码，当加载新的插件会更新resource，并替换宿主和所有插件的resource
+     *
+     * @param newResources 最新的resrouces，包含宿主以及所有插件的资源
+     */
     public void updateResources(Resources newResources) {
         this.mResources = newResources;
     }

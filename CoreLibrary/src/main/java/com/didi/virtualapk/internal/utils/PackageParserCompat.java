@@ -64,6 +64,7 @@ public final class PackageParserCompat {
         static final PackageParser.Package parsePackage(Context context, File apk, int flags) throws Throwable {
             PackageParser parser = new PackageParser();
             PackageParser.Package pkg = parser.parsePackage(apk, flags);
+            //签名校验，所以插件进程和宿主进程的签名要一致
             Reflector.with(parser)
                 .method("collectCertificates", PackageParser.Package.class, int.class)
                 .call(pkg, flags);
