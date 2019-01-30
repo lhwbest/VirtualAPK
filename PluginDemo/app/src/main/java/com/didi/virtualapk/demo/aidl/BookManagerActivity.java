@@ -6,6 +6,7 @@ import com.didi.virtualapk.demo.socket.TCPClientActivity;
 
 import android.annotation.SuppressLint;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -94,6 +95,10 @@ public class BookManagerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_book_manager);
+
+        ContentResolver contentResolver = getContentResolver();
+        Log.e(TAG,"plugin contentResolver class name : " + contentResolver.getClass().getSimpleName());
+
         mEditText = (EditText)findViewById(R.id.editText);
         Intent intent = new Intent(this, BookManagerService.class);
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);

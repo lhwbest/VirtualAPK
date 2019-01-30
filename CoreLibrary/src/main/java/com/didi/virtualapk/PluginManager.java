@@ -213,7 +213,8 @@ public class PluginManager {
     /**
      * hookSystemServices, but need to compatible with Android O in future.
      *
-     * 主要hook了 AMP
+     * hook AMS
+     *
      */
     protected void hookSystemServices() {
         try {

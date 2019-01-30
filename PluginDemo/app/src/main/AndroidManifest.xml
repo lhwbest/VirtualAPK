@@ -96,7 +96,7 @@
         </service>
         <service
             android:name=".aidl.BookManagerService"
-            android:process=":remote"></service>
+            android:process=":remote" />
 
         <activity
             android:name=".provider.ProviderActivity"
@@ -112,7 +112,7 @@
             android:name=".provider.BookProvider"
             android:authorities="com.didi.virtualapk.demo.book.provider"
             android:permission="com.didi.virtualapk.demo.PROVIDER"
-            android:process=":provider"></provider>
+            android:process=":provider" />
 
         <service
             android:name=".socket.TCPServerService"
@@ -148,9 +148,18 @@
             android:enabled="true"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.lhwbest.demo.receiver.MyCustomReceiver"/>
+                <action android:name="com.lhwbest.demo.receiver.MyCustomReceiver" />
             </intent-filter>
         </receiver>
+
+        <service
+            android:name=".services.MyCustomService"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.lhwbest.demo.service.MyCustomService"/>
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

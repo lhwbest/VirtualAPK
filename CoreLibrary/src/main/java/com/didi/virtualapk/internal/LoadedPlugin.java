@@ -86,7 +86,9 @@ public class LoadedPlugin {
         String dexOutputPath = dexOutputDir.getAbsolutePath();
         DexClassLoader loader = new DexClassLoader(apk.getAbsolutePath(), dexOutputPath, libsDir.getAbsolutePath(), parent);
 
+        //宿主和插件有同一个类(包名、类名相同)， 如果COMBINE_CLASSLOADER为true则插件会加载宿主中的类
         if (Constants.COMBINE_CLASSLOADER) {
+            //将parent的dex插入到loader里，并插入到前部
             DexUtil.insertDex(loader, parent, libsDir);
         }
 
@@ -219,13 +221,13 @@ public class LoadedPlugin {
         this.mProviderInfos = Collections.unmodifiableMap(providerInfos);
         this.mPackageInfo.providers = providerInfos.values().toArray(new ProviderInfo[providerInfos.size()]);
 
-        // Register broadcast receivers dynamically
+        // 在宿主中动态注册广播
         Map<ComponentName, ActivityInfo> receivers = new HashMap<ComponentName, ActivityInfo>();
         for (PackageParser.Activity receiver : this.mPackage.receivers) {
             receivers.put(receiver.getComponentName(), receiver.info);
 
             //通过反射创建BroadcastReceiver实例，动态注册该广播
-            //getClassLoader返回的是一个自定义的DexClassLoader，dexPath指向插件apk的路径
+            //getClassLoader返回的是一个自定义的DexClassLoader，dexPath指向插件apk的路径,parent是宿主应用的ClassLoader
             BroadcastReceiver br = BroadcastReceiver.class.cast(getClassLoader().loadClass(receiver.getComponentName().getClassName()).newInstance());
             for (PackageParser.ActivityIntentInfo aii : receiver.intents) {
                 //mHostContext是宿主应用的Context

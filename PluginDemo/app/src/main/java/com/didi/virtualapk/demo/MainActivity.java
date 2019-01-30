@@ -14,6 +14,7 @@ import com.didi.virtualapk.demo.utils.MyConstants;
 import com.didi.virtualapk.demo.utils.MyUtils;
 
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -28,6 +29,10 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        ContentResolver contentResolver = getContentResolver();
+        Log.e(TAG,"plugin contentResolver class name : " + contentResolver.getClass().getSimpleName());
+
         UserManager.sUserId = 2;
         findViewById(R.id.button1).setOnClickListener(new OnClickListener() {
 

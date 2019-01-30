@@ -2,6 +2,7 @@ package com.didi.virtualapk;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -97,6 +98,9 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
+            ContentResolver contentResolver = getContentResolver();
+            Log.e(TAG,"host contentResolver class name : " + contentResolver.getClass().getSimpleName());
+
             // test Activity and Service
             Intent intent = new Intent();
             intent.setClassName(this, "com.didi.virtualapk.demo.aidl.BookManagerActivity");
@@ -107,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
             LoadedPlugin plugin = PluginManager.getInstance(this).getLoadedPlugin(pkg);
             bookUri = PluginContentResolver.wrapperUri(plugin, bookUri);
 
-            Cursor bookCursor = getContentResolver().query(bookUri, new String[]{"_id", "name"}, null, null, null);
+            Cursor bookCursor = contentResolver.query(bookUri, new String[]{"_id", "name"}, null, null, null);
             if (bookCursor != null) {
                 while (bookCursor.moveToNext()) {
                     int bookId = bookCursor.getInt(0);
@@ -175,4 +179,12 @@ public class MainActivity extends AppCompatActivity {
         intent.setAction("com.lhwbest.demo.receiver.MyCustomReceiver");
         sendBroadcast(intent);
     }
+
+    public void startService(View view){
+        Intent intent = new Intent();
+        intent.setAction("com.lhwbest.demo.service.MyCustomService");
+        intent.setPackage("com.didi.virtualapk.demo");
+        startService(intent);
+    }
+
 }

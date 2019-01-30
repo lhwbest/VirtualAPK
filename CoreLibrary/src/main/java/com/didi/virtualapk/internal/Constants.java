@@ -28,6 +28,7 @@ public class Constants {
     public static final String NATIVE_DIR = "valibs";
 
     public static final boolean COMBINE_RESOURCES = true;
+    //宿主和插件有同一个类(包名、类名相同)， 如果COMBINE_CLASSLOADER为true则插件会加载宿主中的类
     public static final boolean COMBINE_CLASSLOADER = true;
     public static final boolean DEBUG = true;
     
