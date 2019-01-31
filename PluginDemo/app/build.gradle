@@ -60,7 +60,7 @@ dependencies {
 apply plugin: 'com.didi.virtualapk.plugin'
 
 virtualApk {
-    packageId = 0x6f // the package id of Resources.
-    targetHost = '../../VirtualAPK/app' // the path of application module in host project.
-    applyHostMapping = true //optional, default value: true.
+    packageId = 0x6f // 插件资源id，避免资源id冲突
+    targetHost = '../../VirtualAPK/app' // 宿主工程的路径
+    applyHostMapping = true // 插件编译时是否启用应用宿主的apply mapping
 }

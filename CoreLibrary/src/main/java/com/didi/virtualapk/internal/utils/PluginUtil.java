@@ -158,6 +158,13 @@ public class PluginUtil {
         }
     }
 
+    /**
+     * 判断service是否是local service
+     *
+     * localservice运行在宿主进程
+     * @param serviceInfo
+     * @return
+     */
     public static final boolean isLocalService(final ServiceInfo serviceInfo) {
         return TextUtils.isEmpty(serviceInfo.processName) || serviceInfo.applicationInfo.packageName.equals(serviceInfo.processName);
     }

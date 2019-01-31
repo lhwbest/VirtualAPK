@@ -422,7 +422,7 @@ public class LoadedPlugin {
             appClass = "android.app.Application";
         }
 
-        //构造Application实例
+        //构造Application实例,并将PluginContext传入
         this.mApplication = instrumentation.newApplication(this.mClassLoader, appClass, this.getPluginContext());
         // inject activityLifecycleCallbacks of the host application
         mApplication.registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacksProxy());

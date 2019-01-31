@@ -140,8 +140,11 @@ public class PluginManager {
     }
 
     protected void hookCurrentProcess() {
+        //hook Instrumentation，主要处理Activity相关逻辑
         hookInstrumentationAndHandler();
+        //hook AMS，处理Service相关逻辑
         hookSystemServices();
+        //hook
         hookDataBindingUtil();
     }
 

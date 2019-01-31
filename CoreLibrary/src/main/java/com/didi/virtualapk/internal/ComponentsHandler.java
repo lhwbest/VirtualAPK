@@ -77,7 +77,7 @@ public class ComponentsHandler {
 
         String targetPackageName = intent.getComponent().getPackageName();
         String targetClassName = intent.getComponent().getClassName();
-        // search map and return specific launchmode stub activity
+        // 如果要启动的组件属于某个插件
         if (!targetPackageName.equals(mContext.getPackageName()) && mPluginManager.getLoadedPlugin(targetPackageName) != null) {
             intent.putExtra(Constants.KEY_IS_PLUGIN, true);
             intent.putExtra(Constants.KEY_TARGET_PACKAGE, targetPackageName);
@@ -86,6 +86,10 @@ public class ComponentsHandler {
         }
     }
 
+    /**
+     * 替换成占坑的Activity
+     * @param intent
+     */
     private void dispatchStubActivity(Intent intent) {
         ComponentName component = intent.getComponent();
         String targetClassName = intent.getComponent().getClassName();

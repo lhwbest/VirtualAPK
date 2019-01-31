@@ -166,14 +166,16 @@ public class VAInstrumentation extends Instrumentation implements Handler.Callba
     protected void injectActivity(Activity activity) {
         final Intent intent = activity.getIntent();
         if (PluginUtil.isIntentFromPlugin(intent)) {
+            //mBase
             Context base = activity.getBaseContext();
             try {
                 LoadedPlugin plugin = this.mPluginManager.getLoadedPlugin(intent);
                 //替换mResources
                 Reflector.with(base).field("mResources").set(plugin.getResources());
                 Reflector reflector = Reflector.with(activity);
-                //替换mBase
+                //替换mBase,主要hook了getAssets、getResources方法
                 reflector.field("mBase").set(plugin.createPluginContext(activity.getBaseContext()));
+                //替换为插件的application
                 reflector.field("mApplication").set(plugin.getApplication());
 
                 // set screenOrientation

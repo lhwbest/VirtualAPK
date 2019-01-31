@@ -25,6 +25,7 @@ import java.util.HashMap;
 
 /**
  * Created by renyugang on 16/8/15.
+ * 缓存占坑的Activity信息
  */
 class StubActivityInfo {
     public static final int MAX_COUNT_STANDARD = 1;
@@ -63,23 +64,28 @@ class StubActivityInfo {
         stubActivity = String.format(STUB_ACTIVITY_STANDARD, corePackage, usedStandardStubActivity);
         switch (launchMode) {
             case ActivityInfo.LAUNCH_MULTIPLE: {
+                //如果Activity启动模式是standard，非沉浸式的，启动 com.didi.virtualapk.core.A$1
                 stubActivity = String.format(STUB_ACTIVITY_STANDARD, corePackage, usedStandardStubActivity);
                 if (windowIsTranslucent) {
+                    //如果Activity启动模式是standard，com.didi.virtualapk.core.A$2
                     stubActivity = String.format(STUB_ACTIVITY_STANDARD, corePackage, 2);
                 }
                 break;
             }
             case ActivityInfo.LAUNCH_SINGLE_TOP: {
+                //如果Activity启动模式是singleTop，顺序选择 com.didi.virtualapk.core.B$1 到 com.didi.virtualapk.core.B$8
                 usedSingleTopStubActivity = usedSingleTopStubActivity % MAX_COUNT_SINGLETOP + 1;
                 stubActivity = String.format(STUB_ACTIVITY_SINGLETOP, corePackage, usedSingleTopStubActivity);
                 break;
             }
             case ActivityInfo.LAUNCH_SINGLE_TASK: {
+                //如果Activity启动模式是singleTask，顺序选择 com.didi.virtualapk.core.C$1 到 com.didi.virtualapk.core.C$8
                 usedSingleTaskStubActivity = usedSingleTaskStubActivity % MAX_COUNT_SINGLETASK + 1;
                 stubActivity = String.format(STUB_ACTIVITY_SINGLETASK, corePackage, usedSingleTaskStubActivity);
                 break;
             }
             case ActivityInfo.LAUNCH_SINGLE_INSTANCE: {
+                //如果Activity启动模式是singleInstance，顺序选择 com.didi.virtualapk.core.D$1 到 com.didi.virtualapk.core.D$8
                 usedSingleInstanceStubActivity = usedSingleInstanceStubActivity % MAX_COUNT_SINGLEINSTANCE + 1;
                 stubActivity = String.format(STUB_ACTIVITY_SINGLEINSTANCE, corePackage, usedSingleInstanceStubActivity);
                 break;
