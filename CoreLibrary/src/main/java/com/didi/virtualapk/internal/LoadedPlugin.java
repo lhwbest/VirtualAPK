@@ -302,6 +302,8 @@ public class LoadedPlugin {
     /**
      *
      * @throws Exception
+     *
+     * 构造插件的application
      */
     public void invokeApplication() throws Exception {
         final Exception[] temp = new Exception[1];
@@ -404,7 +406,7 @@ public class LoadedPlugin {
 
     /**
      * 构造插件的Application
-     * @param forceDefaultAppClass 是否强制使用系统默认的Application.java构造实例
+     * @param forceDefaultAppClass 是否强制使用系统默认的Application.java类构造实例
      * @param instrumentation      宿主应用的instrumenttaion，也就是说插件使用宿主的Instrumenttaion
      * @return
      * @throws Exception
