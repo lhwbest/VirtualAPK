@@ -134,7 +134,7 @@ public class PluginManager {
                 this.mContext = mApplication.getBaseContext();
             }
         }
-        
+
         mComponentsHandler = createComponentsHandler();
         hookCurrentProcess();
     }
@@ -159,7 +159,7 @@ public class PluginManager {
 
     protected void doInWorkThread() {
     }
-    
+
     public Application getHostApplication() {
         return this.mApplication;
     }
@@ -241,6 +241,23 @@ public class PluginManager {
             }
         } catch (Exception e) {
             Log.w(TAG, e);
+        }
+
+        //hook packageManager
+        try {
+            PackageManager manager = mContext.getPackageManager();
+            Class ApplicationPackageManager = Class.forName("android.app.ApplicationPackageManager");
+            Field field = ApplicationPackageManager.getDeclaredField("mPM");
+            field.setAccessible(true);
+            Object rawPm = field.get(manager);
+            Class IPackageManagerClass = Class.forName("android.content.pm.IPackageManager");
+            if (rawPm != null) {
+                LoadedPlugin.PluginPackageManagerInvocationHandler mPackageManagerProxyhandler = new LoadedPlugin.PluginPackageManagerInvocationHandler(this, rawPm);
+                Object proxyPm = Proxy.newProxyInstance(mContext.getClassLoader(), new Class[]{IPackageManagerClass}, mPackageManagerProxyhandler);
+                field.set(manager, proxyPm);
+            }
+        }catch(Exception e){
+            e.printStackTrace();
         }
     }
     
@@ -471,4 +488,61 @@ public class PluginManager {
     public interface Callback {
         void onAddedLoadedPlugin(LoadedPlugin plugin);
     }
+
+//    protected static class PluginPackageManagerInvocationHandler implements InvocationHandler {
+//        private PluginManager mPluginManager;
+//        private PackageManager mRealPackageManager;
+//
+//        protected PluginPackageManagerInvocationHandler(PluginManager pluginManager,PackageManager realPackManager){
+//            this.mPluginManager = pluginManager;
+//            this.mRealPackageManager = realPackManager;
+//        }
+//
+//
+//        @Override
+//        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+//            String methodName = method.getName();
+//            if(methodName.equals("getPackageInfo")){
+//                String packageName = null;
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                    if(args[0] instanceof VersionedPackage){
+//
+//                    }
+//                }else if(args[0] instanceof String){
+//                    packageName = String.valueOf(args[0]);
+//                }
+//                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
+//                if (null != plugin) {
+//                    return plugin.mPackageInfo;
+//                }
+//            }
+//
+//
+//
+//
+//
+//            try {
+//                Log.e("lhwbest",String.format("mRealPackageManager class is %s",mRealPackageManager.getClass().getSimpleName()));
+//                if(mRealPackageManager instanceof LoadedPlugin.PluginPackageManager){
+//                    Method realMethod = null;
+//                    if(method.isAccessible()){
+//                        realMethod = mRealPackageManager.getClass().getMethod(method.getName(),method.getParameterTypes());
+//                    }else{
+//                        realMethod = mRealPackageManager.getClass().getDeclaredMethod(method.getName(),method.getParameterTypes());
+//                    }
+//
+//                    if (realMethod != null) {
+//                        Log.e("lhwbest", String.format("调用了PluginPackageManager的 %s 方法!!!!!!", realMethod.getName()));
+//                        realMethod.setAccessible(method.isAccessible());
+//                        return realMethod.invoke(mRealPackageManager, args);
+//                    }
+//                }
+//            } catch (Exception e) {
+//                Log.e(TAG,String.format("mRealPackageManager 调用 %s 方法失败！！！！",method.getName()));
+//                e.printStackTrace();
+//            }
+//            return method.invoke(mPluginManager.mHostPackageManager,args);
+//        }
+//    }
+
 }

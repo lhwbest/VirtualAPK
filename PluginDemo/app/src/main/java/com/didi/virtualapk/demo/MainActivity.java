@@ -6,24 +6,30 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
-import com.didi.virtualapk.demo.R;
 import com.didi.virtualapk.demo.aidl.Book;
 import com.didi.virtualapk.demo.manager.UserManager;
 import com.didi.virtualapk.demo.model.User;
 import com.didi.virtualapk.demo.utils.MyConstants;
 import com.didi.virtualapk.demo.utils.MyUtils;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
     private static final String TAG = "MainActivity";
+
+    public static final int REQUEST_CALL_PERMISSION = 10111;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +52,9 @@ public class MainActivity extends Activity {
                 startActivity(intent);
             }
         });
+
+
+        ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.CALL_PHONE},REQUEST_CALL_PERMISSION);
     }
 
     @Override
@@ -80,5 +89,25 @@ public class MainActivity extends Activity {
                 }
             }
         }).start();
+    }
+
+    /**
+     * 检查权限后的回调
+     * @param requestCode 请求码
+     * @param permissions  权限
+     * @param grantResults 结果
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_CALL_PERMISSION: //拨打电话
+                if (permissions.length != 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {//失败
+                    Toast.makeText(this, "请允许拨号权限后再试", Toast.LENGTH_SHORT).show();
+                } else {//成功
+                    Toast.makeText(this, "成功", Toast.LENGTH_SHORT).show();
+//                    call("tel:" + "10086");
+                }
+                break;
+        }
     }
 }

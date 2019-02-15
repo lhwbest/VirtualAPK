@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -39,14 +40,19 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         TextView textView = (TextView)findViewById(R.id.textView);
         String cpuArch;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             cpuArch = Build.SUPPORTED_ABIS[0];
         } else {
             cpuArch = Build.CPU_ABI;
         }
         textView.setText(cpuArch);
+        Log.d("ryg", "packageManager class is : " + getPackageManager().getClass().getSimpleName());
         Log.d("ryg", "onCreate cpu arch is "+ cpuArch);
         Log.d("ryg", "onCreate classloader is "+ getClassLoader());
+
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+//            requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, 10111);
+//        }
 
         if (hasPermission()) {
             Log.d(TAG,"loadPlugin");
@@ -85,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG,"requestPermission");
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE_STORAGE);
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,Manifest.permission.CALL_PHONE}, PERMISSION_REQUEST_CODE_STORAGE);
         }
     }
 

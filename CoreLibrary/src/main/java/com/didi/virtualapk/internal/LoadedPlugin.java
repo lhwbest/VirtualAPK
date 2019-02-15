@@ -52,6 +52,7 @@ import android.os.Process;
 import android.os.UserHandle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import com.didi.virtualapk.PluginManager;
 import com.didi.virtualapk.internal.utils.DexUtil;
@@ -61,6 +62,11 @@ import com.didi.virtualapk.utils.Reflector;
 import com.didi.virtualapk.utils.RunUtil;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -112,10 +118,10 @@ public class LoadedPlugin {
             return new Resources(assetManager, hostResources.getDisplayMetrics(), hostResources.getConfiguration());
         }
     }
-    
-    protected PluginPackageManager createPluginPackageManager() {
-        return new PluginPackageManager();
-    }
+
+//    protected PluginPackageManager createPluginPackageManager() {
+//        return new PluginPackageManager();
+//    }
     
     public PluginContext createPluginContext(Context context) {
         if (context == null) {
@@ -139,7 +145,7 @@ public class LoadedPlugin {
     protected final PackageInfo mPackageInfo;
     protected Resources mResources;
     protected ClassLoader mClassLoader;//DexClassLoader，dexPath指定的是插件apk的路径
-    protected PluginPackageManager mPackageManager;
+//    protected PluginPackageManager mPackageManager;
 
     protected Map<ComponentName, ActivityInfo> mActivityInfos;
     protected Map<ComponentName, ServiceInfo> mServiceInfos;
@@ -179,7 +185,8 @@ public class LoadedPlugin {
         this.mPackageInfo.versionCode = this.mPackage.mVersionCode;
         this.mPackageInfo.versionName = this.mPackage.mVersionName;
         this.mPackageInfo.permissions = new PermissionInfo[0];
-        this.mPackageManager = createPluginPackageManager();
+        //hook packageManager
+//        this.mPackageManager = createPluginPackageManager();
         this.mPluginContext = createPluginContext(null);
         this.mNativeLibDir = getDir(context, Constants.NATIVE_DIR);
         this.mPackage.applicationInfo.nativeLibraryDir = this.mNativeLibDir.getAbsolutePath();
@@ -257,8 +264,38 @@ public class LoadedPlugin {
         return this.mPackage.packageName;
     }
 
+    private Field mPMField = null;
+    private Object mProxyPm = null;
+
     public PackageManager getPackageManager() {
-        return this.mPackageManager;
+//        if(mProxyPm == null || mPMField == null){
+//            try {
+//                //1. 反射pm
+//                Class ApplicationPackageManager = Class.forName("android.app.ApplicationPackageManager");
+//                mPMField = ApplicationPackageManager.getDeclaredField("mPM");
+//                mPMField.setAccessible(true);
+//                //2. 动态代理pm
+//                Class IPackageManagerClass = Class.forName("android.content.pm.IPackageManager");
+//                PluginPackageManagerInvocationHandler mPackageManagerProxyhandler = new PluginPackageManagerInvocationHandler(mPluginManager, mPackageManager);
+//                mProxyPm = Proxy.newProxyInstance(mHostContext.getClassLoader(), new Class[]{IPackageManagerClass}, mPackageManagerProxyhandler);
+//                //3. 替换pm
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//                Log.e("lhwbest","反射1失败 : " + e.getMessage());
+//            }
+//
+//        }
+//        try {
+//            mPMField.set(mHostContext.getPackageManager(), mProxyPm);
+//        } catch (IllegalAccessException e) {
+//            e.printStackTrace();
+//            Log.e("lhwbest","反射2失败 : " + e.getMessage());
+//        }
+//
+//        Log.e(TAG,"调用了LoadedPlugin 的 getPackageManager 方法");
+//        PackageManager packageManager = mHostContext.getPackageManager();
+//        return packageManager;
+        return mHostContext.getPackageManager();
     }
 
     public AssetManager getAssets() {
@@ -544,28 +581,391 @@ public class LoadedPlugin {
         return false;
     }
 
+    public static class PluginPackageManagerInvocationHandler implements InvocationHandler {
+        private PluginManager mPluginManager;
+        private Object mPm;
+
+        public PluginPackageManagerInvocationHandler(PluginManager pluginManager, Object pm){
+            this.mPluginManager = pluginManager;
+            this.mPm = pm;
+        }
+
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            String methodName = method.getName();
+            if(methodName.equals("getPackageInfo")){
+                String packageName = null;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    if(args[0] instanceof VersionedPackage){
+                        packageName = ((VersionedPackage)args[0]).getPackageName();
+                    }
+                }
+                if(args[0] instanceof String){
+                    packageName = String.valueOf(args[0]);
+                }
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
+                if (null != plugin) {
+                    return plugin.mPackageInfo;
+                }
+            }else if(methodName.equals("getLaunchIntentForPackage") || methodName.equals("getLeanbackLaunchIntentForPackage")){
+                String packageName = (String) args[0];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
+                if (null != plugin) {
+                    return plugin.getLaunchIntent();
+                }
+            }else if(methodName.equals("getApplicationInfo")){
+                String packageName = (String) args[0];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
+                if (null != plugin) {
+                    return plugin.getApplicationInfo();
+                }
+            }else if(methodName.equals("getActivityInfo")){
+                ComponentName component = (ComponentName) args[0];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                if (null != plugin) {
+                    return plugin.mActivityInfos.get(component);
+                }
+            }else if(methodName.equals("getReceiverInfo")){
+                ComponentName component = (ComponentName) args[0];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                if (null != plugin) {
+                    return plugin.mReceiverInfos.get(component);
+                }
+            }else if(methodName.equals("getServiceInfo")){
+                ComponentName component = (ComponentName) args[0];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                if (null != plugin) {
+                    return plugin.mServiceInfos.get(component);
+                }
+            }else if(methodName.equals("getProviderInfo")){
+                ComponentName component = (ComponentName) args[0];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                if (null != plugin) {
+                    return plugin.mProviderInfos.get(component);
+                }
+            }else if(methodName.equals("resolveActivity")){
+                Intent intent = (Intent) args[0];
+                int flags = (int) args[1];
+                ResolveInfo resolveInfo = mPluginManager.resolveActivity(intent, flags);
+                if (null != resolveInfo) {
+                    return resolveInfo;
+                }
+            }else if(methodName.equals("queryIntentActivities")){
+                Intent intent = (Intent) args[0];
+                int flags = (int) args[1];
+
+                ComponentName component = intent.getComponent();
+                if (null == component) {
+                    if (intent.getSelector() != null) {
+                        intent = intent.getSelector();
+                        component = intent.getComponent();
+                    }
+                }
+
+                if (null != component) {
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                    if (null != plugin) {
+                        ActivityInfo activityInfo = plugin.getActivityInfo(component);
+                        if (activityInfo != null) {
+                            ResolveInfo resolveInfo = new ResolveInfo();
+                            resolveInfo.activityInfo = activityInfo;
+                            return Arrays.asList(resolveInfo);
+                        }
+                    }
+                }
+
+                List<ResolveInfo> all = new ArrayList<ResolveInfo>();
+
+                List<ResolveInfo> pluginResolveInfos = mPluginManager.queryIntentActivities(intent, flags);
+                if (null != pluginResolveInfos && pluginResolveInfos.size() > 0) {
+                    all.addAll(pluginResolveInfos);
+                }
+
+                List<ResolveInfo> hostResolveInfos = (List<ResolveInfo>) method.invoke(mPm,args);
+                if (null != hostResolveInfos && hostResolveInfos.size() > 0) {
+                    all.addAll(hostResolveInfos);
+                }
+                return all;
+            }else if(methodName.equals("queryBroadcastReceivers")){
+                Intent intent = (Intent) args[0];
+                int flags = (int) args[1];
+
+                ComponentName component = intent.getComponent();
+                if (null == component) {
+                    if (intent.getSelector() != null) {
+                        intent = intent.getSelector();
+                        component = intent.getComponent();
+                    }
+                }
+
+                if (null != component) {
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                    if (null != plugin) {
+                        ActivityInfo activityInfo = plugin.getReceiverInfo(component);
+                        if (activityInfo != null) {
+                            ResolveInfo resolveInfo = new ResolveInfo();
+                            resolveInfo.activityInfo = activityInfo;
+                            return Arrays.asList(resolveInfo);
+                        }
+                    }
+                }
+
+                List<ResolveInfo> all = new ArrayList<>();
+
+                List<ResolveInfo> pluginResolveInfos = mPluginManager.queryBroadcastReceivers(intent, flags);
+                if (null != pluginResolveInfos && pluginResolveInfos.size() > 0) {
+                    all.addAll(pluginResolveInfos);
+                }
+
+                List<ResolveInfo> hostResolveInfos = (List<ResolveInfo>) method.invoke(mPm,args);
+                if (null != hostResolveInfos && hostResolveInfos.size() > 0) {
+                    all.addAll(hostResolveInfos);
+                }
+
+                return all;
+            }else if(methodName.equals("resolveService")){
+                Intent intent = (Intent) args[0];
+                int flags = (int) args[1];
+
+                ResolveInfo resolveInfo = mPluginManager.resolveService(intent, flags);
+                if (null != resolveInfo) {
+                    return resolveInfo;
+                }
+            }else if(methodName.equals("queryIntentServices")){
+                Intent intent = (Intent) args[0];
+                int flags = (int) args[1];
+
+                ComponentName component = intent.getComponent();
+                if (null == component) {
+                    if (intent.getSelector() != null) {
+                        intent = intent.getSelector();
+                        component = intent.getComponent();
+                    }
+                }
+
+                if (null != component) {
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                    if (null != plugin) {
+                        ServiceInfo serviceInfo = plugin.getServiceInfo(component);
+                        if (serviceInfo != null) {
+                            ResolveInfo resolveInfo = new ResolveInfo();
+                            resolveInfo.serviceInfo = serviceInfo;
+                            return Arrays.asList(resolveInfo);
+                        }
+                    }
+                }
+
+                List<ResolveInfo> all = new ArrayList<ResolveInfo>();
+
+                List<ResolveInfo> pluginResolveInfos = mPluginManager.queryIntentServices(intent, flags);
+                if (null != pluginResolveInfos && pluginResolveInfos.size() > 0) {
+                    all.addAll(pluginResolveInfos);
+                }
+
+                List<ResolveInfo> hostResolveInfos = (List<ResolveInfo>) method.invoke(mPm,args);
+                if (null != hostResolveInfos && hostResolveInfos.size() > 0) {
+                    all.addAll(hostResolveInfos);
+                }
+
+                return all;
+            }else if(methodName.equals("resolveContentProvider")){
+                String name = (String) args[0];
+                int flags = (int) args[1];
+
+                ProviderInfo providerInfo = mPluginManager.resolveContentProvider(name, flags);
+                if (null != providerInfo) {
+                    return providerInfo;
+                }
+            }else if(methodName.equals("getInstrumentationInfo")){
+                ComponentName component = (ComponentName) args[0];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                if (null != plugin) {
+                    return plugin.mInstrumentationInfos.get(component);
+                }
+            }else if(methodName.equals("getDrawable")){
+                String packageName = (String) args[0];
+                int resid = (int) args[1];
+
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
+                if (null != plugin) {
+                    return plugin.mResources.getDrawable(resid);
+                }
+            }else if(methodName.equals("getActivityIcon")){
+                if(args[0] instanceof ComponentName){
+                    ComponentName component = (ComponentName) args[0];
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                    if (null != plugin) {
+                        return plugin.mResources.getDrawable(plugin.mActivityInfos.get(component).icon);
+                    }
+                }else if(args[0] instanceof Intent){
+                    Intent intent = (Intent) args[0];
+                    ResolveInfo ri = mPluginManager.resolveActivity(intent);
+                    if (null != ri) {
+                        LoadedPlugin plugin = mPluginManager.getLoadedPlugin(ri.resolvePackageName);
+                        return plugin.mResources.getDrawable(ri.activityInfo.icon);
+                    }
+                }
+            }else if(methodName.equals("getActivityBanner")){
+                if(args[0] instanceof ComponentName){
+                    ComponentName component = (ComponentName) args[0];
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                    if (null != plugin) {
+                        return plugin.mResources.getDrawable(plugin.mActivityInfos.get(component).banner);
+                    }
+                }else if(args[0] instanceof Intent){
+                    Intent intent = (Intent) args[0];
+                    ResolveInfo ri = mPluginManager.resolveActivity(intent);
+                    if (null != ri) {
+                        LoadedPlugin plugin = mPluginManager.getLoadedPlugin(ri.resolvePackageName);
+                        return plugin.mResources.getDrawable(ri.activityInfo.banner);
+                    }
+                }
+            }else if(methodName.equals("getApplicationIcon")){
+                if(args[0] instanceof ApplicationInfo){
+                    ApplicationInfo info = (ApplicationInfo) args[0];
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(info.packageName);
+                    if (null != plugin) {
+                        return plugin.mResources.getDrawable(info.icon);
+                    }
+                }else if(args[0] instanceof String){
+                    String packageName = (String) args[0];
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
+                    if (null != plugin) {
+                        return plugin.mResources.getDrawable(plugin.mPackage.applicationInfo.icon);
+                    }
+                }
+            }else if(methodName.equals("getApplicationBanner")){
+                if(args[0] instanceof ApplicationInfo){
+                    ApplicationInfo info = (ApplicationInfo) args[0];
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(info.packageName);
+                    if (null != plugin) {
+                        return plugin.mResources.getDrawable(info.banner);
+                    }
+                }else if(args[0] instanceof String){
+                    String packageName = (String) args[0];
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
+                    if (null != plugin) {
+                        return plugin.mResources.getDrawable(plugin.mPackage.applicationInfo.banner);
+                    }
+                }
+            }else if(methodName.equals("getActivityLogo")){
+                if(args[0] instanceof ComponentName){
+                    ComponentName component = (ComponentName) args[0];
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                    if (null != plugin) {
+                        return plugin.mResources.getDrawable(plugin.mActivityInfos.get(component).logo);
+                    }
+                }else if(args[0] instanceof Intent){
+                    Intent intent = (Intent) args[0];
+                    ResolveInfo ri = mPluginManager.resolveActivity(intent);
+                    if (null != ri) {
+                        LoadedPlugin plugin = mPluginManager.getLoadedPlugin(ri.resolvePackageName);
+                        return plugin.mResources.getDrawable(ri.activityInfo.logo);
+                    }
+                }
+            }else if(methodName.equals("getApplicationLogo")){
+                if(args[0] instanceof ApplicationInfo){
+                    ApplicationInfo info = (ApplicationInfo) args[0];
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(info.packageName);
+                    if (null != plugin) {
+                        return plugin.mResources.getDrawable(0 != info.logo ? info.logo : android.R.drawable.sym_def_app_icon);
+                    }
+                }else if(args[0] instanceof String){
+                    String packageName = (String) args[0];
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
+                    if (null != plugin) {
+                        return plugin.mResources.getDrawable(0 != plugin.mPackage.applicationInfo.logo ? plugin.mPackage.applicationInfo.logo : android.R.drawable.sym_def_app_icon);
+                    }
+                }
+            }else if(methodName.equals("getText")){
+                String packageName = (String) args[0];
+                int resid = (int) args[1];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
+                if (null != plugin) {
+                    return plugin.mResources.getText(resid);
+                }
+            }else if(methodName.equals("getXml")){
+                String packageName = (String) args[0];
+                int resid = (int) args[1];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
+                if (null != plugin) {
+                    return plugin.mResources.getXml(resid);
+                }
+            }else if(methodName.equals("getApplicationLabel")){
+                ApplicationInfo info = (ApplicationInfo) args[0];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(info.packageName);
+                if (null != plugin) {
+                    try {
+                        return plugin.mResources.getText(info.labelRes);
+                    } catch (Resources.NotFoundException e) {
+                        // ignored.
+                    }
+                }
+            }else if(methodName.equals("getResourcesForActivity")){
+                ComponentName component = (ComponentName) args[0];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
+                if (null != plugin) {
+                    return plugin.mResources;
+                }
+            }else if(methodName.equals("getResourcesForApplication")){
+                if(args[0] instanceof ApplicationInfo){
+                    ApplicationInfo app = (ApplicationInfo) args[0];
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(app.packageName);
+                    if (null != plugin) {
+                        return plugin.mResources;
+                    }
+                }else if(args[0] instanceof String){
+                    String appPackageName = (String) args[0];
+                    LoadedPlugin plugin = mPluginManager.getLoadedPlugin(appPackageName);
+                    if (null != plugin) {
+                        return plugin.mResources;
+                    }
+                }
+            }else if(methodName.equals("setInstallerPackageName")){
+                String targetPackage = (String) args[0];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(targetPackage);
+                if (null != plugin) {
+                    return null;
+                }
+            }else if(methodName.equals("getInstallerPackageName")){
+                String packageName = (String) args[0];
+                LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
+                if (null != plugin) {
+                    return mPluginManager.getHostContext().getPackageName();
+                }
+            }
+            return method.invoke(mPm,args);
+        }
+    }
+
     /**
      * @author johnsonlee
      */
-    protected class PluginPackageManager extends PackageManager {
+    public static class PluginPackageManager extends PackageManager {
 
-        protected PackageManager mHostPackageManager = mHostContext.getPackageManager();
+        private PluginManager mPluginManager;
+        private PackageManager mHostPackageManager;
+
+        public PluginPackageManager(PluginManager pluginManager){
+            this.mPluginManager = pluginManager;
+            mHostPackageManager = pluginManager.getHostContext().getPackageManager();
+        }
 
         @Override
         public PackageInfo getPackageInfo(String packageName, int flags) throws NameNotFoundException {
-
+            Log.e("lhwbest","调用了PluginPackageManager的getPackageInfo方法!!!!!!");
             LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
             if (null != plugin) {
                 return plugin.mPackageInfo;
             }
-
             return this.mHostPackageManager.getPackageInfo(packageName, flags);
         }
-    
+
         @TargetApi(Build.VERSION_CODES.O)
         @Override
         public PackageInfo getPackageInfo(VersionedPackage versionedPackage, int i) throws NameNotFoundException {
-
+            Log.e("lhwbest","调用了PluginPackageManager的getPackageInfo方法!!!!!!");
             LoadedPlugin plugin = mPluginManager.getLoadedPlugin(versionedPackage.getPackageName());
             if (null != plugin) {
                 return plugin.mPackageInfo;
@@ -573,19 +973,22 @@ public class LoadedPlugin {
 
             return this.mHostPackageManager.getPackageInfo(versionedPackage, i);
         }
-    
+
         @Override
         public String[] currentToCanonicalPackageNames(String[] names) {
+            Log.e("lhwbest","调用了PluginPackageManager的currentToCanonicalPackageNames方法!!!!!!");
             return this.mHostPackageManager.currentToCanonicalPackageNames(names);
         }
 
         @Override
         public String[] canonicalToCurrentPackageNames(String[] names) {
+            Log.e("lhwbest","调用了PluginPackageManager的canonicalToCurrentPackageNames方法!!!!!!");
             return this.mHostPackageManager.canonicalToCurrentPackageNames(names);
         }
 
         @Override
         public Intent getLaunchIntentForPackage(@NonNull String packageName) {
+            Log.e("lhwbest","调用了PluginPackageManager的getLaunchIntentForPackage方法!!!!!!");
             LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
             if (null != plugin) {
                 return plugin.getLaunchIntent();
@@ -597,6 +1000,7 @@ public class LoadedPlugin {
         @TargetApi(Build.VERSION_CODES.LOLLIPOP)
         @Override
         public Intent getLeanbackLaunchIntentForPackage(@NonNull String packageName) {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
             if (null != plugin) {
                 return plugin.getLeanbackLaunchIntent();
@@ -607,43 +1011,51 @@ public class LoadedPlugin {
 
         @Override
         public int[] getPackageGids(@NonNull String packageName) throws NameNotFoundException {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             return this.mHostPackageManager.getPackageGids(packageName);
         }
-    
+
         @TargetApi(Build.VERSION_CODES.N)
         @Override
         public int[] getPackageGids(String packageName, int flags) throws NameNotFoundException {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             return this.mHostPackageManager.getPackageGids(packageName, flags);
         }
-    
+
         @TargetApi(Build.VERSION_CODES.N)
         @Override
         public int getPackageUid(String packageName, int flags) throws NameNotFoundException {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             return this.mHostPackageManager.getPackageUid(packageName, flags);
         }
 
         @Override
         public PermissionInfo getPermissionInfo(String name, int flags) throws NameNotFoundException {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             return this.mHostPackageManager.getPermissionInfo(name, flags);
         }
 
         @Override
         public List<PermissionInfo> queryPermissionsByGroup(String group, int flags) throws NameNotFoundException {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             return this.mHostPackageManager.queryPermissionsByGroup(group, flags);
         }
 
         @Override
         public PermissionGroupInfo getPermissionGroupInfo(String name, int flags) throws NameNotFoundException {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             return this.mHostPackageManager.getPermissionGroupInfo(name, flags);
         }
 
         @Override
         public List<PermissionGroupInfo> getAllPermissionGroups(int flags) {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             return this.mHostPackageManager.getAllPermissionGroups(flags);
         }
 
         @Override
         public ApplicationInfo getApplicationInfo(String packageName, int flags) throws NameNotFoundException {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
             if (null != plugin) {
                 return plugin.getApplicationInfo();
@@ -654,6 +1066,7 @@ public class LoadedPlugin {
 
         @Override
         public ActivityInfo getActivityInfo(ComponentName component, int flags) throws NameNotFoundException {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
             if (null != plugin) {
                 return plugin.mActivityInfos.get(component);
@@ -664,6 +1077,7 @@ public class LoadedPlugin {
 
         @Override
         public ActivityInfo getReceiverInfo(ComponentName component, int flags) throws NameNotFoundException {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
             if (null != plugin) {
                 return plugin.mReceiverInfos.get(component);
@@ -674,6 +1088,7 @@ public class LoadedPlugin {
 
         @Override
         public ServiceInfo getServiceInfo(ComponentName component, int flags) throws NameNotFoundException {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
             if (null != plugin) {
                 return plugin.mServiceInfos.get(component);
@@ -684,6 +1099,7 @@ public class LoadedPlugin {
 
         @Override
         public ProviderInfo getProviderInfo(ComponentName component, int flags) throws NameNotFoundException {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             LoadedPlugin plugin = mPluginManager.getLoadedPlugin(component);
             if (null != plugin) {
                 return plugin.mProviderInfos.get(component);
@@ -694,12 +1110,14 @@ public class LoadedPlugin {
 
         @Override
         public List<PackageInfo> getInstalledPackages(int flags) {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             return this.mHostPackageManager.getInstalledPackages(flags);
         }
 
         @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
         @Override
         public List<PackageInfo> getPackagesHoldingPermissions(String[] permissions, int flags) {
+            Log.e("lhwbest","调用了PluginPackageManager的方法!!!!!!");
             return this.mHostPackageManager.getPackagesHoldingPermissions(permissions, flags);
         }
 
@@ -753,63 +1171,63 @@ public class LoadedPlugin {
         public List<ApplicationInfo> getInstalledApplications(int flags) {
             return this.mHostPackageManager.getInstalledApplications(flags);
         }
-    
+
         @TargetApi(Build.VERSION_CODES.O)
         @Override
         public boolean isInstantApp() {
             return this.mHostPackageManager.isInstantApp();
         }
-    
+
         @TargetApi(Build.VERSION_CODES.O)
         @Override
         public boolean isInstantApp(String packageName) {
             return this.mHostPackageManager.isInstantApp(packageName);
         }
-    
+
         @TargetApi(Build.VERSION_CODES.O)
         @Override
         public int getInstantAppCookieMaxBytes() {
             return this.mHostPackageManager.getInstantAppCookieMaxBytes();
         }
-    
+
         @TargetApi(Build.VERSION_CODES.O)
         @NonNull
         @Override
         public byte[] getInstantAppCookie() {
             return this.mHostPackageManager.getInstantAppCookie();
         }
-    
+
         @TargetApi(Build.VERSION_CODES.O)
         @Override
         public void clearInstantAppCookie() {
             this.mHostPackageManager.clearInstantAppCookie();
         }
-    
+
         @TargetApi(Build.VERSION_CODES.O)
         @Override
         public void updateInstantAppCookie(@Nullable byte[] cookie) {
             this.mHostPackageManager.updateInstantAppCookie(cookie);
         }
-    
+
         @Override
         public String[] getSystemSharedLibraryNames() {
             return this.mHostPackageManager.getSystemSharedLibraryNames();
         }
-    
+
         @TargetApi(Build.VERSION_CODES.O)
         @NonNull
         @Override
         public List<SharedLibraryInfo> getSharedLibraries(int flags) {
             return this.mHostPackageManager.getSharedLibraries(flags);
         }
-    
+
         @TargetApi(Build.VERSION_CODES.O)
         @Nullable
         @Override
         public ChangedPackages getChangedPackages(int sequenceNumber) {
             return this.mHostPackageManager.getChangedPackages(sequenceNumber);
         }
-    
+
         @Override
         public FeatureInfo[] getSystemAvailableFeatures() {
             return this.mHostPackageManager.getSystemAvailableFeatures();
@@ -825,7 +1243,7 @@ public class LoadedPlugin {
         public boolean hasSystemFeature(String name, int version) {
             return this.mHostPackageManager.hasSystemFeature(name, version);
         }
-    
+
         @Override
         public ResolveInfo resolveActivity(Intent intent, int flags) {
             ResolveInfo resolveInfo = mPluginManager.resolveActivity(intent, flags);
@@ -1258,7 +1676,7 @@ public class LoadedPlugin {
         public String getInstallerPackageName(String packageName) {
             LoadedPlugin plugin = mPluginManager.getLoadedPlugin(packageName);
             if (null != plugin) {
-                return mHostContext.getPackageName();
+                return mPluginManager.getHostContext().getPackageName();
             }
 
             return this.mHostPackageManager.getInstallerPackageName(packageName);
@@ -1318,25 +1736,25 @@ public class LoadedPlugin {
         public boolean isSafeMode() {
             return this.mHostPackageManager.isSafeMode();
         }
-    
+
         @TargetApi(Build.VERSION_CODES.O)
         @Override
         public void setApplicationCategoryHint(@NonNull String packageName, int categoryHint) {
             this.mHostPackageManager.setApplicationCategoryHint(packageName, categoryHint);
         }
-    
+
         @TargetApi(Build.VERSION_CODES.LOLLIPOP)
         @Override
         public @NonNull PackageInstaller getPackageInstaller() {
             return this.mHostPackageManager.getPackageInstaller();
         }
-    
+
         @TargetApi(Build.VERSION_CODES.O)
         @Override
         public boolean canRequestPackageInstalls() {
             return this.mHostPackageManager.canRequestPackageInstalls();
         }
-    
+
         public Drawable loadItemIcon(PackageItemInfo itemInfo, ApplicationInfo appInfo) {
             if (itemInfo == null) {
                 return null;
